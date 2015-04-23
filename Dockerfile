@@ -37,6 +37,8 @@ RUN /usr/local/cmake/bin/cmake \
 VOLUME /output
 WORKDIR /output
 ENV LD_LIBRARY_PATH /usr/local/netcdf/lib
+ENV PATH /usr/local/peridigm/bin:$PATH
+ENV PATH /usr/local/trilinos/bin:$PATH
 
 RUN mkdir /var/run/sshd
 EXPOSE 22

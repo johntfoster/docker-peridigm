@@ -80,6 +80,9 @@ if __name__ == "__main__":
 
     start_virtual_cluster(num_procs, shared_filepath)
 
-    run(num_procs, input_file)
+    try:
+        run(num_procs, input_file)
+    except:
+        cleanup(num_procs)
 
     cleanup(num_procs)

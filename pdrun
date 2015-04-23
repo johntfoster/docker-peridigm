@@ -1,0 +1,85 @@
+#!/usr/bin/env python
+"""pdrun.
+
+Usage:
+    pdrun (-p | --np) <num_proc> <input_file>
+    pdrun (-p | --np) <num_proc> <input_file> [--path=<path>]
+    pdrun -h | --help
+    pdrun --version
+
+Options:
+    -h --help      Show this screen.
+    --version      Show version.
+    -p --np        Number of processors to run with
+    --path=<path>  Path to shared mount directory (default is $PWD)
+"""
+
+import subprocess
+import sys
+import os
+from docopt import docopt
+
+def start_docker_container(container_number, volume_mnt_point): 
+
+    run_string = ["docker", "run", "-d", "-P", 
+                  "--name", "peridigm" + str(container_number),
+                  "-h", "node" + str(container_number), 
+                  "-v", str(volume_mnt_point) + ":/output",
+                  "johntfoster/peridigm"]
+
+    print("Starting container: peridigm" + str(container_number))
+    subprocess.call(run_string)
+
+
+def start_virtual_cluster(num_procs, shared_filepath):
+
+    for i in range(num_procs):
+        start_docker_container(i, shared_filepath)
+
+def cleanup(num_procs):
+
+    for i in range(num_procs):
+        subprocess.call(["docker", "stop", "peridigm" + str(i)])
+        subprocess.call(["docker", "rm", "-v", "peridigm" + str(i)])
+
+def get_ips(num_procs):
+         
+    run_string = lambda x: ["docker", "inspect", "-f", 
+                            '"{{ .NetworkSettings.IPAddress }}"', 
+                            "peridigm" + str(x)]
+
+    raw_string = [(subprocess.check_output(run_string(i))).strip('\n').replace('"','') 
+            for i in range(num_procs)]
+
+    return ",".join(raw_string)
+
+
+def run(num_procs, input_file):
+
+    run_string = ["docker", "exec", "peridigm0",
+                  "mpirun", "-np", str(num_procs),
+                  "-host", get_ips(num_procs),
+                  "/usr/local/peridigm/bin/Peridigm", str(input_file)]
+
+    print(" ".join(run_string))
+
+    subprocess.call(run_string)
+
+
+
+if __name__ == "__main__":
+
+    arguments = docopt(__doc__)
+    
+    if arguments['--path'] != "null":
+        shared_filepath = arguments['--path']
+    else:
+        shared_filepath = os.getcwd()
+    num_procs = int(arguments['<num_proc>'])
+    input_file = arguments['<input_file>']
+
+    start_virtual_cluster(num_procs, shared_filepath)
+
+    run(num_procs, input_file)
+
+    cleanup(num_procs)

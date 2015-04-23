@@ -82,7 +82,7 @@ if __name__ == "__main__":
 
     try:
         run(num_procs, input_file)
+        cleanup(num_procs)
     except:
         cleanup(num_procs)
 
-    cleanup(num_procs)
